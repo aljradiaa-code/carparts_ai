@@ -1,23 +1,37 @@
-      - name: Disable minify and shrinkResources for release
+workflows:
+  carparts-ai-android:
+    name: CarPartsAI Android Build
+    max_build_duration: 60
+    environment:
+      flutter: stable
+    scripts:
+      - name: Unzip project
+        script: |
+          unzip -o carparts_ai.zip -d .
+      - name: Create Flutter project (if needed)
+        script: |
+          cd carparts_ai
+          flutter create . --platforms=android --project-name carparts_ai
+      - name: Disable minify and shrinkResources
         script: |
           cd carparts_ai/android/app
-          # Detect which build.gradle file exists and append release config
           if [ -f build.gradle.kts ]; then
-            echo 'android {' >> build.gradle.kts
-            echo '    buildTypes {' >> build.gradle.kts
-            echo '        getByName("release") {' >> build.gradle.kts
-            echo '            isMinifyEnabled = false' >> build.gradle.kts
-            echo '            isShrinkResources = false' >> build.gradle.kts
-            echo '        }' >> build.gradle.kts
-            echo '    }' >> build.gradle.kts
-            echo '}' >> build.gradle.kts
+            # Kotlin DSL: استخدام isMinifyEnabled و isShrinkResources
+            # إدراج الأسطر بعد 'release {' إذا لم تكن موجودة مسبقاً
+            grep -q 'isMinifyEnabled = false' build.gradle.kts || sed -i '' '/release {/a\'$'\n''            isMinifyEnabled = false' build.gradle.kts
+            grep -q 'isShrinkResources = false' build.gradle.kts || sed -i '' '/release {/a\'$'\n''            isShrinkResources = false' build.gradle.kts
           elif [ -f build.gradle ]; then
-            echo 'android {' >> build.gradle
-            echo '    buildTypes {' >> build.gradle
-            echo '        release {' >> build.gradle
-            echo '            minifyEnabled false' >> build.gradle
-            echo '            shrinkResources false' >> build.gradle
-            echo '        }' >> build.gradle
-            echo '    }' >> build.gradle
-            echo '}' >> build.gradle
+            # Groovy DSL: استخدام minifyEnabled و shrinkResources
+            grep -q 'minifyEnabled false' build.gradle || sed -i '' '/release {/a\'$'\n''            minifyEnabled false' build.gradle
+            grep -q 'shrinkResources false' build.gradle || sed -i '' '/release {/a\'$'\n''            shrinkResources false' build.gradle
           fi
+      - name: Get dependencies
+        script: |
+          cd carparts_ai
+          flutter pub get
+      - name: Build APK
+        script: |
+          cd carparts_ai
+          flutter build apk --release
+    artifacts:
+      - carparts_ai/build/app/outputs/**/*.apk
