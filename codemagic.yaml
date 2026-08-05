@@ -5,41 +5,47 @@ workflows:
     environment:
       flutter: stable
     scripts:
-      - name: Unzip project
+      - name: فك ملف المشروع
         script: |
           unzip -o carparts_ai.zip -d .
-      - name: Create Flutter project (if needed)
+      - name: توليد ملفات منصة أندرويد الناقصة
         script: |
           cd carparts_ai
           flutter create . --platforms=android --project-name carparts_ai
-      - name: Disable minify and shrinkResources for release
+      - name: تعطيل تصغير الكود R8 (يفادي تعارضه مع مكتبة النموذج المحلي)
         script: |
           cd carparts_ai/android/app
-          # Detect which build.gradle file exists and append release config
           if [ -f build.gradle.kts ]; then
-            echo 'android {' >> build.gradle.kts
-            echo '    buildTypes {' >> build.gradle.kts
-            echo '        release {' >> build.gradle.kts
-            echo '            minifyEnabled = false' >> build.gradle.kts
-            echo '            shrinkResources = false' >> build.gradle.kts
-            echo '        }' >> build.gradle.kts
-            echo '    }' >> build.gradle.kts
-            echo '}' >> build.gradle.kts
-          elif [ -f build.gradle ]; then
-            echo 'android {' >> build.gradle
-            echo '    buildTypes {' >> build.gradle
-            echo '        release {' >> build.gradle
-            echo '            minifyEnabled false' >> build.gradle
-            echo '            shrinkResources false' >> build.gradle
-            echo '        }' >> build.gradle
-            echo '    }' >> build.gradle
-            echo '}' >> build.gradle
+            cat >> build.gradle.kts << 'EOF'
+
+android {
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = false
+            isShrinkResources = false
+        }
+    }
+}
+EOF
           fi
-      - name: Get dependencies
+          if [ -f build.gradle ]; then
+            cat >> build.gradle << 'EOF'
+
+android {
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
+}
+EOF
+          fi
+      - name: تثبيت الحزم
         script: |
           cd carparts_ai
           flutter pub get
-      - name: Build APK
+      - name: بناء ملف APK
         script: |
           cd carparts_ai
           flutter build apk --release
